@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, ArrowDown, X, ShieldAlert, CheckCircle2, Clock, ArrowUpRight } from "lucide-react";
+import { ArrowRight, ArrowDown, X, ArrowUpRight } from "lucide-react";
+import { ThreeCityScene } from "./ThreeCityScene";
 
 interface HudCardData {
   id: string;
@@ -11,8 +12,6 @@ interface HudCardData {
   distance: string;
   confidence: number;
   color: string;
-  beaconX: number; // percentage coordinates on hero
-  beaconY: number;
   cardTop: string;
   cardLeft: string;
   floatDelay: string;
@@ -28,8 +27,6 @@ const HUD_CARDS: HudCardData[] = [
     distance: "2.4 km",
     confidence: 94.7,
     color: "#EF4444",
-    beaconX: 66.8,
-    beaconY: 30.2,
     cardTop: "24%",
     cardLeft: "62.5%",
     floatDelay: "0s",
@@ -43,8 +40,6 @@ const HUD_CARDS: HudCardData[] = [
     distance: "1.2 km",
     confidence: 98.2,
     color: "#22C55E",
-    beaconX: 95.2,
-    beaconY: 35.5,
     cardTop: "32%",
     cardLeft: "91%",
     floatDelay: "1.5s",
@@ -58,8 +53,6 @@ const HUD_CARDS: HudCardData[] = [
     distance: "3.1 km",
     confidence: 89.4,
     color: "#38BDF8",
-    beaconX: 89.8,
-    beaconY: 65.8,
     cardTop: "63%",
     cardLeft: "86.5%",
     floatDelay: "2.8s",
@@ -70,99 +63,10 @@ export function HeroSection() {
   const [mounted, setMounted] = useState(false);
   const [activeModal, setActiveModal] = useState<HudCardData | null>(null);
   const [hoveredCard, setHoveredCard] = useState<string | null>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setMounted(true);
   }, []);
-
-  // Animated canvas overlay for traveling data pulses & beacon ripples
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    let animId: number;
-    let tick = 0;
-
-    const resize = () => {
-      canvas.width = canvas.parentElement?.clientWidth || window.innerWidth;
-      canvas.height = canvas.parentElement?.clientHeight || window.innerHeight;
-    };
-    resize();
-    window.addEventListener("resize", resize);
-
-    // Microscopic ambient data particles
-    const particles = Array.from({ length: 45 }, () => ({
-      x: 0.5 + Math.random() * 0.5,
-      y: 0.1 + Math.random() * 0.8,
-      vx: (Math.random() - 0.5) * 0.0003,
-      vy: -0.0002 - Math.random() * 0.0004,
-      size: 0.8 + Math.random() * 1.5,
-      opacity: 0.2 + Math.random() * 0.6,
-      color: Math.random() > 0.5 ? "#6366F1" : "#38BDF8",
-    }));
-
-    const render = () => {
-      tick += 0.03;
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      const w = canvas.width;
-      const h = canvas.height;
-
-      // Draw subtle pulsing ground ripples around beacons on the city
-      HUD_CARDS.forEach((card, idx) => {
-        const bx = (card.beaconX / 100) * w;
-        const by = (card.beaconY / 100) * h;
-        const isHovered = hoveredCard === card.id;
-
-        const pulse = (Math.sin(tick * 2.2 + idx * 1.5) + 1) / 2;
-        const radius = 6 + pulse * (isHovered ? 18 : 12);
-        const alpha = Math.max(0, 0.7 - pulse * 0.65);
-
-        ctx.strokeStyle = card.color;
-        ctx.lineWidth = 1;
-        ctx.globalAlpha = alpha;
-        ctx.beginPath();
-        ctx.arc(bx, by, radius, 0, Math.PI * 2);
-        ctx.stroke();
-
-        // Inner glowing core dot
-        ctx.fillStyle = card.color;
-        ctx.globalAlpha = 0.9;
-        ctx.beginPath();
-        ctx.arc(bx, by, isHovered ? 3 : 2, 0, Math.PI * 2);
-        ctx.fill();
-      });
-
-      // Ambient floating photon particles
-      ctx.globalAlpha = 1;
-      particles.forEach((p) => {
-        p.x += p.vx;
-        p.y += p.vy;
-        if (p.y < 0) p.y = 1;
-        if (p.x < 0.45) p.x = 0.95;
-        if (p.x > 1) p.x = 0.5;
-
-        ctx.fillStyle = p.color;
-        ctx.globalAlpha = p.opacity;
-        ctx.beginPath();
-        ctx.arc(p.x * w, p.y * h, p.size, 0, Math.PI * 2);
-        ctx.fill();
-      });
-
-      animId = requestAnimationFrame(render);
-    };
-
-    render();
-
-    return () => {
-      cancelAnimationFrame(animId);
-      window.removeEventListener("resize", resize);
-    };
-  }, [hoveredCard]);
 
   const scrollToNext = () => {
     const nextEl = document.getElementById("problem") || document.getElementById("report");
@@ -172,41 +76,20 @@ export function HeroSection() {
   };
 
   return (
-    <section
-      ref={containerRef}
-      className="relative min-h-[100svh] w-full flex flex-col justify-between bg-[#050506] overflow-hidden pt-20 pb-8 px-6 md:px-12 selection:bg-[#6366F1] selection:text-white"
-    >
-      {/* ─── 1. Reference City Backdrop (Right Half) with Left Fade ─── */}
-      <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden select-none">
-        <img
-          src="/hero-reference.png"
-          alt="CivicSense City Intelligence"
-          className="absolute top-0 right-0 h-full w-full object-cover object-right opacity-100"
-          style={{
-            minWidth: "100%",
-            transform: "scale(1.01)",
-          }}
-        />
+    <section className="relative min-h-[100svh] w-full flex flex-col justify-between bg-[#050506] overflow-hidden pt-20 pb-8 px-6 md:px-12 selection:bg-[#6366F1] selection:text-white">
+      {/* ─── 1. Real Interactive Procedural 3D City Scene (Three.js WebGL) ─── */}
+      <ThreeCityScene />
 
-        {/* Gradient Mask: Fades out the baked text on the left into pure #050506 void */}
-        <div
-          className="absolute inset-0"
-          style={{
-            background:
-              "linear-gradient(to right, #050506 0%, #050506 36%, rgba(5,5,6,0.85) 44%, rgba(5,5,6,0.25) 54%, transparent 64%)",
-          }}
-        />
-
-        {/* Top and Bottom soft vignettes */}
-        <div className="absolute top-0 left-0 right-0 h-28 bg-gradient-to-b from-[#050506] via-[#050506]/80 to-transparent" />
-        <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-[#050506] to-transparent" />
-      </div>
-
-      {/* ─── 2. Live Canvas Layer for Real-Time Pulses & Particles ─── */}
-      <canvas
-        ref={canvasRef}
-        className="absolute inset-0 pointer-events-none z-10 w-full h-full"
+      {/* ─── 2. Atmospheric Left-Side Gradient Mask (Preserves Typography Readability) ─── */}
+      <div
+        className="absolute inset-0 pointer-events-none z-10 select-none"
+        style={{
+          background:
+            "linear-gradient(to right, #050506 0%, #050506 34%, rgba(5,5,6,0.8) 48%, rgba(5,5,6,0.2) 68%, transparent 100%)",
+        }}
       />
+      <div className="absolute top-0 left-0 right-0 h-28 bg-gradient-to-b from-[#050506] via-[#050506]/80 to-transparent pointer-events-none z-10" />
+      <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-[#050506] to-transparent pointer-events-none z-10" />
 
       {/* ─── 3. Top Sub-Nav Metadata Bar (Matching Reference Exactly) ─── */}
       <div className="relative z-30 max-w-[1536px] mx-auto w-full flex items-center justify-between pt-2 pb-4 border-b border-white/[0.08]">
@@ -471,7 +354,7 @@ export function HeroSection() {
             {/* Actions */}
             <div className="flex items-center gap-3">
               <a
-                href="http://localhost:5173"
+                href="https://admin-dashboard-six-nu-90.vercel.app"
                 target="_blank"
                 rel="noreferrer"
                 className="flex-1 py-2.5 px-4 bg-[#6366F1] text-white text-xs font-mono uppercase tracking-[0.14em] font-semibold hover:bg-[#4F46E5] transition-colors flex items-center justify-center gap-2"

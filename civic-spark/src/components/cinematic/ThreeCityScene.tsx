@@ -560,19 +560,6 @@ export const ThreeCityScene: React.FC<ThreeCitySceneProps> = ({
           0.3 + Math.sin(elapsed * 1.8) * 0.08;
       }
 
-      // Update projected 2D coordinates for HUD cards
-      const updatedBeacons: CityBeacon[] = beaconMeshes.map(({ beacon }) => {
-        const worldPos = new THREE.Vector3(...beacon.position).add(cityGroup.position);
-        const screen = projectToScreen(worldPos);
-        return {
-          ...beacon,
-          screenX: screen.x,
-          screenY: screen.y,
-        };
-      });
-
-      onBeaconsUpdate?.(updatedBeacons);
-
       renderer.render(scene, camera);
     };
 
@@ -587,7 +574,7 @@ export const ThreeCityScene: React.FC<ThreeCitySceneProps> = ({
         container.removeChild(renderer.domElement);
       }
     };
-  }, [onBeaconsUpdate, onBeaconSelect, selectedBeaconId]);
+  }, []);
 
   if (!webglSupported) {
     return <CityGridCanvas />;
