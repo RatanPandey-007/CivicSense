@@ -1,31 +1,50 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Playfair+Display:wght@600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap");
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Civic India — Premium Dark-First Design System
-   Colors: Deep Black, Pure White, Vibrant Aqua (#00F5D4)
-   Inspired by Tesla × Stripe × Linear
+/* CivicSense — Cinematic Intelligence Platform Design System
+   Backgrounds: #080808, #0A0A0A, #101014
+   Primary Inks: #FFFFFF, #A1A1AA, #71717A
+   Accents: Technical Indigo #6366F1, #818CF8
+   Structural Radius: 0px
 */
 @layer base {
   :root {
-    /* Default = Dark theme */
-    --primary: 168 100% 48%;
-    --primary-foreground: 0 0% 0%;
-    --primary-glow: 174 100% 50%;
+    --primary: 239 84% 67%; /* #6366F1 */
+    --primary-foreground: 0 0% 100%;
+    --primary-glow: 243 75% 59%;
 
-    --secondary: 168 80% 30%;
+    --secondary: 240 4% 16%;
     --secondary-foreground: 0 0% 100%;
 
-    --background: 0 0% 4%;
-    --foreground: 0 0% 96%;
+    --background: 0 0% 3.1%; /* #080808 */
+    --foreground: 0 0% 100%; /* #FFFFFF */
 
-    --card: 0 0% 6%;
-    --card-foreground: 0 0% 96%;
+    --card: 0 0% 3.9%; /* #0A0A0A */
+    --card-foreground: 0 0% 100%;
 
-    --popover: 0 0% 8%;
-    --popover-foreground: 0 0% 96%;
+    --popover: 240 6% 6%; /* #101014 */
+    --popover-foreground: 0 0% 100%;
+
+    --muted: 240 4% 11%;
+    --muted-foreground: 240 5% 65%; /* #A1A1AA */
+
+    --accent: 239 84% 67%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84% 60%; /* #EF4444 */
+    --destructive-foreground: 0 0% 100%;
+
+    --warning: 38 92% 50%; /* #F59E0B */
+    --success: 142 71% 45%; /* #22C55E */
+
+    --border: 240 4% 16%;
+    --input: 240 4% 16%;
+    --ring: 239 84% 67%;
+
+    --radius: 0px; /* Structural 0px */
 
     --muted: 0 0% 10%;
     --muted-foreground: 0 0% 55%;
@@ -409,3 +428,95 @@
 .delay-500 {
   animation-delay: 500ms;
 }
+
+/* ==========================================================================
+   CivicSense Cinematic Intelligence Platform — Utilities
+   ========================================================================== */
+
+.font-mono-ui {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-feature-settings: "tnum" 1;
+}
+
+.font-display {
+  font-family: "Inter", sans-serif;
+  letter-spacing: -0.045em;
+  line-height: 0.88;
+}
+
+.hairline {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.hairline-b {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.hairline-t {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.hairline-l {
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.hairline-r {
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.hairline-bright {
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+/* Smooth reveal utility using specified bezier */
+.cs-reveal {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.9s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+}
+
+.cs-reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Native details/summary icon styling without icon library */
+details.cs-faq-item summary {
+  list-style: none;
+}
+details.cs-faq-item summary::-webkit-details-marker {
+  display: none;
+}
+details.cs-faq-item .cs-faq-toggle::after {
+  content: "+";
+  font-family: "JetBrains Mono", monospace;
+  font-size: 14px;
+}
+details.cs-faq-item[open] .cs-faq-toggle::after {
+  content: "−";
+}
+
+/* Strictly disable all motion and animations under prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .cs-reveal {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  .intro-overlay {
+    display: none !important;
+  }
+}
+

@@ -56,13 +56,10 @@ export function Footer() {
           {/* Brand & Contact */}
           <div className="lg:col-span-2">
             <Link to="/" className="flex items-center gap-3 mb-6 group">
-              <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center">
-                <span className="text-primary font-bold text-lg">CI</span>
-              </div>
-              <div>
-                <span className="font-bold text-lg text-foreground">Civic</span>
-                <span className="text-primary font-semibold ml-1">India</span>
-              </div>
+              <span className="w-2 h-2 bg-[#6366F1] inline-block animate-pulse" />
+              <span className="font-mono text-sm tracking-[0.2em] font-medium text-white uppercase group-hover:text-[#818CF8] transition-colors">
+                CIVICSENSE
+              </span>
             </Link>
             <p className="text-muted-foreground text-sm mb-6 max-w-xs">
               {t("footer.desc")}

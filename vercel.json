@@ -1,0 +1,10 @@
+{
+  "buildCommand": "cd civic-spark && npm install && npm run build",
+  "outputDirectory": "civic-spark/dist",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}

@@ -26,17 +26,14 @@ export function Header() {
   };
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 glass-nav border-b border-border/30">
-      <nav className="container-custom flex items-center justify-between py-4 px-4 md:px-8">
+    <header className="fixed top-0 left-0 right-0 z-50 bg-[#080808]/85 backdrop-blur-md hairline-b">
+      <nav className="max-w-[1440px] mx-auto flex items-center justify-between py-4 px-6 md:px-12">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-3 group">
-          <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
-            <span className="text-primary font-bold text-lg">FIN</span>
-          </div>
-          <div className="hidden sm:block">
-            <span className="font-bold text-lg text-foreground">FIX IT</span>
-            <span className="text-primary font-semibold ml-1">NOW</span>
-          </div>
+          <span className="w-2 h-2 bg-[#6366F1] inline-block animate-pulse" />
+          <span className="font-mono text-[13px] tracking-[0.2em] font-medium text-white uppercase group-hover:text-[#818CF8] transition-colors">
+            CIVICSENSE
+          </span>
         </Link>
 
         {/* Desktop Navigation */}

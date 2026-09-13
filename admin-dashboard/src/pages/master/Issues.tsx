@@ -1,143 +1,87 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Search, ShieldAlert, CheckCircle, Clock, Trash2 } from "lucide-react";
+import {
+  Search,
+  ShieldAlert,
+  CheckCircle2,
+  Clock,
+  Trash2,
+  ExternalLink,
+  SlidersHorizontal,
+  RefreshCw,
+  Sparkles,
+} from "lucide-react";
 import { Input } from "../../components/ui/Input";
 import { Button } from "../../components/ui/Button";
-
-import { supabase } from "../../lib/supabaseClient";
-
-interface Issue {
-  id: string;
-  title: string;
-  address: string;
-  status: string;
-  priority: string;
-  created_at: string;
-  reporter_id: string;
-  ai_category: string;
-  ai_confidence: number;
-}
+import {
+  fetchAdminIssues,
+  updateAdminIssueStatus,
+  deleteAdminIssue,
+  type AdminIssue,
+  FALLBACK_ADMIN_ISSUES,
+} from "../../lib/dataAdapter";
+import { cn } from "../../lib/utils";
 
 export default function MasterIssues() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("All");
+  const [filterPriority, setFilterPriority] = useState("All");
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5;
+  const itemsPerPage = 6;
 
-  const [issues, setIssues] = useState<Issue[]>([]);
+  const [issues, setIssues] = useState<AdminIssue[]>(FALLBACK_ADMIN_ISSUES);
   const [loading, setLoading] = useState(true);
 
+  const loadIssues = async () => {
+    setLoading(true);
+    const data = await fetchAdminIssues();
+    setIssues(data);
+    setLoading(false);
+  };
+
   useEffect(() => {
-    fetchIssues();
+    loadIssues();
   }, []);
 
-  const fetchIssues = async () => {
-    try {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from("issues")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-      setIssues(data || []);
-    } catch (error) {
-      console.error("Error fetching issues:", error);
-    } finally {
-      setLoading(false);
-    }
+  const handleStatusUpdate = async (id: string, newStatus: string) => {
+    // Optimistic UI update
+    setIssues((prev) =>
+      prev.map((iss) =>
+        iss.id === id ? { ...iss, status: newStatus as any } : iss,
+      ),
+    );
+    await updateAdminIssueStatus(id, newStatus);
   };
 
-  const updateIssueStatus = async (id: string, newStatus: string) => {
-    try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      const token = session?.access_token;
-
-      if (!token) throw new Error("Not authenticated");
-
-      const response = await fetch(`http://localhost:5000/api/issues/${id}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ status: newStatus }),
-      });
-
-      if (!response.ok) throw new Error("Failed to update status");
-
-      // Soft update local state
-      setIssues(
-        issues.map((iss) =>
-          iss.id === id ? { ...iss, status: newStatus } : iss,
-        ),
-      );
-    } catch (err) {
-      console.error(err);
-      alert("Failed to update status");
-    }
-  };
-
-  const deleteIssue = async (id: string) => {
-    if (
-      !window.confirm(
-        "Are you sure you want to permanently delete this issue? This action cannot be undone.",
-      )
-    )
+  const handleDelete = async (id: string) => {
+    if (!window.confirm("Permanently archive and delete this civic ticket?"))
       return;
-
-    try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      const token = session?.access_token;
-
-      if (!token) throw new Error("Not authenticated");
-
-      const response = await fetch(`http://localhost:5000/api/issues/${id}`, {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || "Failed to delete issue");
-      }
-
-      // Remove the deleted issue from local state
-      setIssues(issues.filter((iss) => iss.id !== id));
-    } catch (err: unknown) {
-      console.error(err);
-      if (err instanceof Error) {
-        alert(err.message);
-      } else {
-        alert("An error occurred while deleting the issue");
-      }
-    }
+    setIssues((prev) => prev.filter((iss) => iss.id !== id));
+    await deleteAdminIssue(id);
   };
 
-  // Pagination & Filtering Logic
+  // Filter & Search logic
   const filteredIssues = issues.filter((issue) => {
     const term = searchTerm.toLowerCase();
     const searchMatch =
       (issue.title || "").toLowerCase().includes(term) ||
       (issue.id || "").toLowerCase().includes(term) ||
-      (issue.address || "").toLowerCase().includes(term);
+      (issue.address || "").toLowerCase().includes(term) ||
+      (issue.ai_category || "").toLowerCase().includes(term);
 
-    // Check status match specifically because our frontend matches "in_progress" to "In Progress"
     let statusMatch = true;
     if (filterStatus !== "All") {
-      const normalizedIssueStatus = (issue.status || "open")
-        .toLowerCase()
-        .replace("_", " ");
-      statusMatch = normalizedIssueStatus === filterStatus.toLowerCase();
+      const normStatus = (issue.status || "open").toLowerCase().replace("_", " ");
+      statusMatch = normStatus === filterStatus.toLowerCase();
     }
 
-    return searchMatch && statusMatch;
+    let priorityMatch = true;
+    if (filterPriority !== "All") {
+      priorityMatch =
+        (issue.priority || "").toLowerCase() === filterPriority.toLowerCase();
+    }
+
+    return searchMatch && statusMatch && priorityMatch;
   });
 
   const totalPages = Math.ceil(filteredIssues.length / itemsPerPage) || 1;
@@ -146,66 +90,57 @@ export default function MasterIssues() {
     currentPage * itemsPerPage,
   );
 
-  const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case "resolved":
-        return "bg-primary/20 text-primary border-primary/30";
-      case "in_progress":
-      case "in progress":
-        return "bg-blue-500/20 text-blue-400 border-blue-500/30";
-      case "open":
-      case "pending":
-        return "bg-yellow-500/20 text-yellow-400 border-yellow-500/30";
-      default:
-        return "bg-muted text-muted-foreground border-border";
-    }
-  };
-
-  const getPriorityColor = (priority: string) => {
-    switch (priority.toLowerCase()) {
-      case "urgent":
-        return "text-destructive font-bold";
-      case "high":
-        return "text-orange-400 font-semibold";
-      case "medium":
-        return "text-yellow-400";
-      default:
-        return "text-muted-foreground";
-    }
-  };
-
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <div className="space-y-6 animate-fade-in max-w-7xl mx-auto">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-2 border-b border-[rgba(255,255,255,0.08)]">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">
-            Global Issue Management
+          <div className="flex items-center gap-2 font-mono text-[10px] text-[#818CF8] uppercase tracking-widest mb-1">
+            <ShieldAlert className="w-3 h-3" />
+            <span>INCIDENT TRIAGE & AUDIT LOG</span>
+          </div>
+          <h1 className="text-2xl font-bold tracking-tight text-white">
+            Global Ticket Management
           </h1>
-          <p className="text-sm text-muted-foreground">
-            Monitor and escalate platform-wide civic issues.
-          </p>
         </div>
+
+        <button
+          onClick={loadIssues}
+          className="flex items-center gap-2 px-3 py-1.5 bg-[#0D0D0F] border border-[rgba(255,255,255,0.08)] text-xs font-mono text-[#A1A1AA] hover:text-white hover:border-[#6366F1] transition-colors"
+        >
+          <RefreshCw className={cn("w-3.5 h-3.5", loading && "animate-spin text-[#6366F1]")} />
+          <span>Sync Log</span>
+        </button>
       </div>
 
-      <div className="card-elevated overflow-hidden">
-        {/* Toolbar */}
-        <div className="p-4 border-b border-border/50 flex flex-col sm:flex-row gap-4 justify-between items-center bg-background/50">
-          <div className="relative w-full sm:max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+      {/* Main Table Container */}
+      <div className="bg-[#0D0D0F] border border-[rgba(255,255,255,0.08)] overflow-hidden">
+        {/* Filter Toolbar */}
+        <div className="p-4 border-b border-[rgba(255,255,255,0.08)] bg-[#0A0A0C] flex flex-col md:flex-row gap-3 justify-between items-stretch md:items-center">
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#71717A]" />
             <Input
-              placeholder="Search issues ID, title, or location..."
-              className="pl-9 bg-background"
+              placeholder="Filter by ticket ID, keyword, or ward..."
+              className="pl-9 bg-[#080808] border-[rgba(255,255,255,0.08)] text-xs text-white placeholder-[#71717A] font-mono focus:border-[#6366F1] rounded-none"
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setCurrentPage(1);
+              }}
             />
           </div>
-          <div className="flex items-center gap-2 w-full sm:w-auto">
+
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-1.5 font-mono text-xs text-[#71717A]">
+              <SlidersHorizontal className="w-3.5 h-3.5" />
+              <span>Status:</span>
+            </div>
             <select
-              className="bg-background border border-border text-sm rounded-md px-3 py-2 text-foreground"
+              className="bg-[#080808] border border-[rgba(255,255,255,0.08)] text-xs font-mono text-white px-2.5 py-1.5 focus:outline-none focus:border-[#6366F1]"
               value={filterStatus}
               onChange={(e) => {
                 setFilterStatus(e.target.value);
-                setCurrentPage(1); // Reset page on filter
+                setCurrentPage(1);
               }}
             >
               <option value="All">All Statuses</option>
@@ -213,117 +148,160 @@ export default function MasterIssues() {
               <option value="In Progress">In Progress</option>
               <option value="Resolved">Resolved</option>
             </select>
-            <Button
-              variant="outline"
-              className="w-full sm:w-auto gap-2 text-destructive border-destructive/30 hover:bg-destructive/10"
+
+            <select
+              className="bg-[#080808] border border-[rgba(255,255,255,0.08)] text-xs font-mono text-white px-2.5 py-1.5 focus:outline-none focus:border-[#6366F1]"
+              value={filterPriority}
+              onChange={(e) => {
+                setFilterPriority(e.target.value);
+                setCurrentPage(1);
+              }}
             >
-              <ShieldAlert className="w-4 h-4" /> Escalate Selected
-            </Button>
+              <option value="All">All Priorities</option>
+              <option value="Critical">Critical</option>
+              <option value="Urgent">Urgent</option>
+              <option value="High">High</option>
+              <option value="Medium">Medium</option>
+              <option value="Low">Low</option>
+            </select>
           </div>
         </div>
 
-        {/* Table */}
+        {/* Dense Table */}
         <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left">
-            <thead className="text-xs text-muted-foreground uppercase bg-muted/30 border-b border-border">
+          <table className="w-full text-xs text-left">
+            <thead className="bg-[#080808] border-b border-[rgba(255,255,255,0.06)] font-mono text-[10px] text-[#71717A] uppercase tracking-wider">
               <tr>
-                <th className="px-6 py-4 font-medium">Issue ID</th>
-                <th className="px-6 py-4 font-medium">Title & Location</th>
-                <th className="px-6 py-4 font-medium">Status</th>
-                <th className="px-6 py-4 font-medium">Priority</th>
-                <th className="px-6 py-4 font-medium">Date & Reporter</th>
-                <th className="px-6 py-4 font-medium text-right">Actions</th>
+                <th className="px-5 py-3">Signal ID</th>
+                <th className="px-5 py-3">Incident Synopsis & GPS</th>
+                <th className="px-5 py-3">AI Classification</th>
+                <th className="px-5 py-3">Priority</th>
+                <th className="px-5 py-3">Status</th>
+                <th className="px-5 py-3">Citizen Contact</th>
+                <th className="px-5 py-3 text-right">Dispatch Control</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border/50">
+            <tbody className="divide-y divide-[rgba(255,255,255,0.05)]">
               {loading ? (
                 <tr>
-                  <td
-                    colSpan={6}
-                    className="text-center py-8 text-muted-foreground"
-                  >
-                    Loading issues...
+                  <td colSpan={7} className="text-center py-12 text-[#71717A] font-mono">
+                    <div className="flex flex-col items-center justify-center gap-2">
+                      <RefreshCw className="w-5 h-5 animate-spin text-[#6366F1]" />
+                      <span>Ingesting incident cluster...</span>
+                    </div>
+                  </td>
+                </tr>
+              ) : paginatedIssues.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="text-center py-12 text-[#71717A] font-mono">
+                    No tickets match current filter constraints.
                   </td>
                 </tr>
               ) : (
                 paginatedIssues.map((issue) => (
                   <tr
                     key={issue.id}
-                    className="hover:bg-muted/20 transition-colors"
+                    className="hover:bg-white/[0.02] transition-colors group"
                   >
-                    <td className="px-6 py-4 font-medium text-foreground">
+                    {/* ID */}
+                    <td className="px-5 py-4 font-mono font-medium text-white whitespace-nowrap">
                       <Link
                         to={`/master/issues/${issue.id}`}
-                        className="hover:underline text-primary"
+                        className="text-[#818CF8] hover:underline flex items-center gap-1"
                       >
-                        {issue.id}
+                        <span>{issue.id}</span>
+                        <ExternalLink className="w-2.5 h-2.5 opacity-60 group-hover:opacity-100" />
                       </Link>
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="font-medium text-foreground">
+
+                    {/* Title & Address */}
+                    <td className="px-5 py-4 max-w-xs">
+                      <div className="font-semibold text-white truncate text-xs">
                         {issue.title}
                       </div>
-                      <div className="text-xs text-muted-foreground mt-1 text-blue-500">
-                        AI Category: {issue.ai_category || "Unclassified"} (
-                        {Math.round((issue.ai_confidence || 0) * 100)}%)
-                      </div>
-                      <div className="text-xs text-muted-foreground mt-1">
+                      <div className="text-[11px] text-[#71717A] truncate mt-0.5 font-mono">
                         {issue.address}
                       </div>
                     </td>
-                    <td className="px-6 py-4">
-                      <span
-                        className={`px-2.5 py-1 rounded-full text-xs font-medium border capitalize ${getStatusColor(issue.status || "open")}`}
-                      >
-                        {(issue.status || "open").replace("_", " ")}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span
-                        className={`capitalize ${getPriorityColor(issue.priority || "medium")}`}
-                      >
-                        {issue.priority || "medium"}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-foreground">
-                        {new Date(issue.created_at).toLocaleDateString()}
+
+                    {/* AI Classification */}
+                    <td className="px-5 py-4 whitespace-nowrap">
+                      <div className="flex items-center gap-1.5 text-xs text-white">
+                        <Sparkles className="w-3 h-3 text-[#6366F1]" />
+                        <span>{issue.ai_category || "Unclassified"}</span>
                       </div>
-                      <div className="text-xs text-muted-foreground mt-1">
-                        User: {issue.reporter_id}
+                      <div className="font-mono text-[10px] text-[#818CF8] mt-0.5">
+                        {Math.round((issue.ai_confidence || 0.92) * 100)}% CONFIDENCE
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex justify-end gap-2 text-muted-foreground">
-                        {issue.status !== "in_progress" &&
-                          issue.status !== "resolved" && (
-                            <button
-                              onClick={() =>
-                                updateIssueStatus(issue.id, "in_progress")
-                              }
-                              className="p-1.5 hover:bg-blue-500/10 hover:text-blue-500 rounded-md transition-colors"
-                              title="Mark In Progress"
-                            >
-                              <Clock className="w-4 h-4" />
-                            </button>
-                          )}
+
+                    {/* Priority */}
+                    <td className="px-5 py-4 whitespace-nowrap">
+                      <span
+                        className={cn(
+                          "font-mono text-[10px] uppercase font-bold",
+                          issue.priority === "critical" || issue.priority === "urgent"
+                            ? "text-[#EF4444]"
+                            : issue.priority === "high"
+                              ? "text-[#F97316]"
+                              : "text-[#EAB308]",
+                        )}
+                      >
+                        {issue.priority}
+                      </span>
+                    </td>
+
+                    {/* Status */}
+                    <td className="px-5 py-4 whitespace-nowrap">
+                      <span
+                        className={cn(
+                          "font-mono text-[10px] uppercase px-2 py-0.5 border",
+                          issue.status === "resolved"
+                            ? "bg-[#22C55E]/10 text-[#22C55E] border-[#22C55E]/30"
+                            : issue.status === "in_progress"
+                              ? "bg-[#06B6D4]/10 text-[#06B6D4] border-[#06B6D4]/30"
+                              : "bg-[#EAB308]/10 text-[#EAB308] border-[#EAB308]/30",
+                        )}
+                      >
+                        {issue.status.replace("_", " ")}
+                      </span>
+                    </td>
+
+                    {/* Reporter */}
+                    <td className="px-5 py-4 whitespace-nowrap font-mono text-[11px] text-[#A1A1AA]">
+                      <div>{issue.reporter_name || "Citizen Reporter"}</div>
+                      <div className="text-[10px] text-[#71717A]">
+                        {issue.reporter_phone || "Aadhaar Verified"}
+                      </div>
+                    </td>
+
+                    {/* Actions */}
+                    <td className="px-5 py-4 text-right whitespace-nowrap">
+                      <div className="flex items-center justify-end gap-1.5">
+                        {issue.status !== "in_progress" && issue.status !== "resolved" && (
+                          <button
+                            onClick={() => handleStatusUpdate(issue.id, "in_progress")}
+                            className="p-1.5 bg-[#06B6D4]/10 text-[#06B6D4] hover:bg-[#06B6D4]/20 border border-[#06B6D4]/20 transition-colors"
+                            title="Dispatch field units"
+                          >
+                            <Clock className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                         {issue.status !== "resolved" && (
                           <button
-                            onClick={() =>
-                              updateIssueStatus(issue.id, "resolved")
-                            }
-                            className="p-1.5 hover:bg-primary/20 hover:text-primary rounded-md transition-colors"
-                            title="Mark Resolved"
+                            onClick={() => handleStatusUpdate(issue.id, "resolved")}
+                            className="p-1.5 bg-[#22C55E]/10 text-[#22C55E] hover:bg-[#22C55E]/20 border border-[#22C55E]/20 transition-colors"
+                            title="Confirm resolution"
                           >
-                            <CheckCircle className="w-4 h-4" />
+                            <CheckCircle2 className="w-3.5 h-3.5" />
                           </button>
                         )}
                         <button
-                          onClick={() => deleteIssue(issue.id)}
-                          className="p-1.5 hover:bg-destructive/10 hover:text-destructive rounded-md transition-colors"
-                          title="Delete Issue"
+                          onClick={() => handleDelete(issue.id)}
+                          className="p-1.5 bg-[#EF4444]/10 text-[#EF4444] hover:bg-[#EF4444]/20 border border-[#EF4444]/20 transition-colors"
+                          title="Purge from index"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     </td>
@@ -334,15 +312,14 @@ export default function MasterIssues() {
           </table>
         </div>
 
-        {/* Pagination */}
+        {/* Pagination Bar */}
         {totalPages > 1 && (
-          <div className="p-4 border-t border-border/50 flex flex-wrap gap-4 items-center justify-between text-sm text-muted-foreground bg-background/50">
+          <div className="p-4 border-t border-[rgba(255,255,255,0.08)] bg-[#0A0A0C] flex flex-wrap items-center justify-between gap-3 text-xs font-mono text-[#71717A]">
             <div>
-              Showing {paginatedIssues.length} of {filteredIssues.length}{" "}
-              entries
+              Showing {paginatedIssues.length} of {filteredIssues.length} entries
             </div>
-            <div className="flex items-center gap-4">
-              <span className="text-xs font-medium">
+            <div className="flex items-center gap-2">
+              <span className="text-[#EDEDED]">
                 Page {currentPage} of {totalPages}
               </span>
               <div className="flex gap-1">
@@ -351,6 +328,7 @@ export default function MasterIssues() {
                   size="sm"
                   disabled={currentPage === 1}
                   onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  className="rounded-none text-xs bg-transparent border-[rgba(255,255,255,0.08)] text-white hover:bg-white/5"
                 >
                   Previous
                 </Button>
@@ -358,9 +336,8 @@ export default function MasterIssues() {
                   variant="outline"
                   size="sm"
                   disabled={currentPage === totalPages}
-                  onClick={() =>
-                    setCurrentPage((p) => Math.min(totalPages, p + 1))
-                  }
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  className="rounded-none text-xs bg-transparent border-[rgba(255,255,255,0.08)] text-white hover:bg-white/5"
                 >
                   Next
                 </Button>

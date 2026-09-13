@@ -2,14 +2,15 @@ import { Outlet } from "react-router-dom";
 
 export default function AuthLayout() {
   return (
-    <div className="min-h-screen flexitems-center justify-center bg-background relative overflow-hidden">
-      {/* Decorative background gradients */}
-      <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0">
-        <div className="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] rounded-full bg-primary/10 blur-[120px]" />
-        <div className="absolute top-[60%] -right-[10%] w-[50%] h-[50%] rounded-full bg-primary/5 blur-[120px]" />
+    <div className="min-h-screen flex items-center justify-center bg-[#080808] text-[#EDEDED] relative overflow-hidden selection:bg-[#6366F1]/30 selection:text-white">
+      {/* Precision grid and ambient light */}
+      <div className="absolute inset-0 pointer-events-none -z-10 overflow-hidden">
+        <div className="absolute top-1/4 -left-32 w-[600px] h-[600px] bg-[#6366F1]/06 rounded-full blur-[140px]" />
+        <div className="absolute bottom-1/4 -right-32 w-[600px] h-[600px] bg-[#00F5D4]/03 rounded-full blur-[160px]" />
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:48px_48px] opacity-60" />
       </div>
 
-      <div className="z-10 w-full max-w-md mx-auto p-4 flex items-center min-h-screen">
+      <div className="z-10 w-full max-w-lg mx-auto p-4 flex items-center min-h-screen">
         <Outlet />
       </div>
     </div>

@@ -1,118 +1,90 @@
-import { useState } from "react";
-import { Outlet, Link, useLocation } from "react-router-dom";
-import {
-  MapIcon,
-  AlertTriangleIcon,
-  BarChart3Icon,
-  LogOutIcon,
-  ShieldAlert,
-  MenuIcon,
-  FileText,
-} from "lucide-react";
-import { cn } from "../lib/utils";
-
-const sidebarLinks = [
-  {
-    name: "Analytics Overview",
-    href: "/master/dashboard",
-    icon: BarChart3Icon,
-  },
-  { name: "Issue Management", href: "/master/issues", icon: AlertTriangleIcon },
-  { name: "Municipal Admins", href: "/master/municipalities", icon: MapIcon },
-  { name: "Content Management", href: "/master/blogs", icon: FileText },
-];
+import { useState, useEffect, useCallback } from "react";
+import { Outlet } from "react-router-dom";
+import CommandSidebar from "../components/command/CommandSidebar";
+import CommandBar from "../components/command/CommandBar";
+import CommandPalette from "../components/command/CommandPalette";
+import NotificationDrawer from "../components/command/NotificationDrawer";
+import SystemStatusModal from "../components/command/SystemStatusModal";
+import CustomCursor from "../components/command/CustomCursor";
+import SystemInitLoader from "../components/command/SystemInitLoader";
 
 export default function MasterLayout() {
-  const [isSidebarOpen, setSidebarOpen] = useState(true);
-  const location = useLocation();
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [statusModalOpen, setStatusModalOpen] = useState(false);
+  const [booted, setBooted] = useState(false);
+  const [unreadCount] = useState(3);
+
+  // Ctrl+K listener
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "k") {
+        e.preventDefault();
+        setPaletteOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
+
+  const handleBootComplete = useCallback(() => {
+    setBooted(true);
+  }, []);
+
+  if (!booted) {
+    return <SystemInitLoader onComplete={handleBootComplete} />;
+  }
 
   return (
-    <div className="flex bg-background min-h-screen relative overflow-hidden text-foreground">
-      {/* Dynamic Background */}
-      <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-primary/5 rounded-full blur-[120px] pointer-events-none -z-10 opacity-70" />
+    <>
+      {/* Custom cursor — desktop only */}
+      <CustomCursor />
 
-      {/* Sidebar */}
-      <aside
-        className={cn(
-          "fixed md:relative z-40 w-64 h-screen border-r border-border bg-sidebar transition-transform duration-300 ease-in-out",
-          !isSidebarOpen && "-translate-x-full md:translate-x-0",
-        )}
-      >
-        <div className="flex items-center gap-3 px-6 h-16 border-b border-border">
-          <ShieldAlert className="w-6 h-6 text-primary" />
-          <span className="font-display font-bold text-lg tracking-tight">
-            Master Admin
-          </span>
+      <div className="flex h-screen bg-[#070708] text-white overflow-hidden">
+        {/* Ambient background */}
+        <div className="fixed inset-0 pointer-events-none -z-10">
+          <div className="absolute top-0 right-1/4 w-[800px] h-[800px] bg-[#6366F1]/3 rounded-full blur-[160px]" />
+          <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-[#38BDF8]/2 rounded-full blur-[180px]" />
         </div>
 
-        <div className="p-4 flex flex-col h-[calc(100vh-4rem)]">
-          <nav className="space-y-1 flex-1">
-            {sidebarLinks.map((link) => {
-              const isActive = location.pathname === link.href;
-              return (
-                <Link
-                  key={link.name}
-                  to={link.href}
-                  className={cn(
-                    "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
-                    isActive
-                      ? "bg-primary/10 text-primary"
-                      : "text-sidebar-muted hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-                  )}
-                >
-                  <link.icon
-                    className={cn(
-                      "w-5 h-5",
-                      isActive ? "text-primary" : "text-muted-foreground",
-                    )}
-                  />
-                  {link.name}
-                </Link>
-              );
-            })}
-          </nav>
+        {/* Sidebar */}
+        <CommandSidebar
+          collapsed={sidebarCollapsed}
+          onToggle={() => setSidebarCollapsed((v) => !v)}
+        />
 
-          <div className="pt-4 border-t border-border mt-auto">
-            <Link
-              to="/login"
-              className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors"
-            >
-              <LogOutIcon className="w-5 h-5" />
-              Sign Out
-            </Link>
-          </div>
+        {/* Main area */}
+        <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+          {/* Top bar */}
+          <CommandBar
+            onSearchOpen={() => setPaletteOpen(true)}
+            onNotificationsOpen={() => setNotificationsOpen(true)}
+            onSystemStatusOpen={() => setStatusModalOpen(true)}
+            unreadCount={unreadCount}
+          />
+
+          {/* Page content */}
+          <main className="flex-1 overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-[rgba(255,255,255,0.08)]">
+            <Outlet />
+          </main>
         </div>
-      </aside>
+      </div>
 
-      {/* Main Content */}
-      <main className="flex-1 flex flex-col min-h-screen max-w-full overflow-hidden">
-        {/* Header */}
-        <header className="h-16 flex items-center justify-between px-6 border-b border-border/50 bg-background/50 backdrop-blur-md sticky top-0 z-30">
-          <div className="flex items-center gap-4">
-            <button
-              className="md:hidden p-2 text-muted-foreground hover:bg-accent rounded-md"
-              onClick={() => setSidebarOpen(!isSidebarOpen)}
-            >
-              <MenuIcon className="w-5 h-5" />
-            </button>
-            <h2 className="font-medium text-lg hidden sm:block">
-              Welcome back, Superadmin
-            </h2>
-          </div>
+      {/* Global overlays */}
+      <CommandPalette
+        open={paletteOpen}
+        onClose={() => setPaletteOpen(false)}
+      />
 
-          <div className="flex items-center gap-4">
-            {/* Search, Notifications, Avatar here */}
-            <div className="w-8 h-8 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center text-primary font-medium text-sm">
-              MA
-            </div>
-          </div>
-        </header>
+      <NotificationDrawer
+        open={notificationsOpen}
+        onClose={() => setNotificationsOpen(false)}
+      />
 
-        {/* Page Content */}
-        <div className="flex-1 overflow-auto p-4 md:p-8">
-          <Outlet />
-        </div>
-      </main>
-    </div>
+      {statusModalOpen && (
+        <SystemStatusModal onClose={() => setStatusModalOpen(false)} />
+      )}
+    </>
   );
 }

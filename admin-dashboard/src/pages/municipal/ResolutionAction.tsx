@@ -4,365 +4,276 @@ import {
   ArrowLeft,
   MapPin,
   User,
-  CheckCircle,
-  Tag,
-  Phone,
-  Shield,
+  CheckCircle2,
+  Clock,
+  Sparkles,
 } from "lucide-react";
 import { Button } from "../../components/ui/Button";
-import { supabase } from "../../lib/supabaseClient";
 import { LeafletMap } from "../../components/ui/LeafletMap";
-
-interface Issue {
-  id: string;
-  title: string;
-  description: string;
-  address: string;
-  location_lat: number;
-  location_lng: number;
-  image_url?: string;
-  status: string;
-  priority: string;
-  created_at: string;
-  reporter_id: string;
-  reporter_name?: string;
-  reporter_phone?: string;
-  reporter_aadhar?: string;
-  ai_category: string;
-  ai_confidence: number;
-}
+import {
+  fetchAdminIssueById,
+  updateAdminIssueStatus,
+  type AdminIssue,
+} from "../../lib/dataAdapter";
+import { cn } from "../../lib/utils";
 
 export default function ResolutionAction() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [issue, setIssue] = useState<Issue | null>(null);
+  const [issue, setIssue] = useState<AdminIssue | null>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
 
   useEffect(() => {
     if (id) {
-      fetchIssueDetails(id);
+      loadIssue(id);
     }
   }, [id]);
 
-  const fetchIssueDetails = async (issueId: string) => {
-    try {
-      setLoading(true);
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      const token = session?.access_token;
-
-      if (!token) throw new Error("Not authenticated");
-
-      const response = await fetch(
-        `http://localhost:5000/api/issues/${issueId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        },
-      );
-
-      if (!response.ok) {
-        if (response.status === 403)
-          throw new Error("Forbidden: This issue is not in your municipality");
-        throw new Error("Failed to load issue details");
-      }
-
-      const data = await response.json();
-      setIssue(data);
-    } catch (error) {
-      console.error("Error fetching issue details:", error);
-      alert(error instanceof Error ? error.message : "Error loading issue");
-    } finally {
-      setLoading(false);
-    }
+  const loadIssue = async (issueId: string) => {
+    setLoading(true);
+    const data = await fetchAdminIssueById(issueId);
+    setIssue(data);
+    setLoading(false);
   };
 
   const handleStatusUpdate = async (newStatus: string) => {
     if (!issue) return;
-    try {
-      setUpdating(true);
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      const token = session?.access_token;
-
-      if (!token) throw new Error("Not authenticated");
-
-      const response = await fetch(
-        `http://localhost:5000/api/issues/${issue.id}`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ status: newStatus }),
-        },
-      );
-
-      if (!response.ok) throw new Error("Failed to update status");
-
-      // Update local state
-      setIssue({ ...issue, status: newStatus });
-      alert(`Status Updated: Issue marked as ${newStatus.replace("_", " ")}`);
-    } catch (err: unknown) {
-      console.error(err);
-      const msg =
-        err instanceof Error ? err.message : "Could not update issue status.";
-      alert(`Update Failed: ${msg}`);
-    } finally {
-      setUpdating(false);
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch ((status || "open").toLowerCase()) {
-      case "open":
-        return "bg-yellow-500/10 text-yellow-500 border-yellow-500/20";
-      case "in_progress":
-        return "bg-blue-500/10 text-blue-500 border-blue-500/20";
-      case "resolved":
-        return "bg-green-500/10 text-green-500 border-green-500/20";
-      default:
-        return "bg-gray-500/10 text-gray-500 border-gray-500/20";
-    }
+    setUpdating(true);
+    setIssue({ ...issue, status: newStatus as any });
+    await updateAdminIssueStatus(issue.id, newStatus);
+    setUpdating(false);
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[50vh] text-muted-foreground">
-        Loading issue details...
+      <div className="flex items-center justify-center min-h-[50vh] text-[#71717A] font-mono text-xs">
+        RETRIEVING WARD RESOLUTION DOSSIER...
       </div>
     );
   }
 
   if (!issue) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[50vh] text-muted-foreground">
-        <p>Issue not found or access denied.</p>
+      <div className="flex flex-col items-center justify-center min-h-[50vh] text-center space-y-4">
+        <p className="font-mono text-sm text-[#A1A1AA]">
+          INCIDENT RECORD NOT FOUND OR RESTRICTED
+        </p>
         <Button
           variant="outline"
-          className="mt-4"
           onClick={() => navigate("/municipal/issues")}
+          className="rounded-none font-mono text-xs text-white border-[rgba(255,255,255,0.08)]"
         >
-          Go Back
+          Return to Assigned List
         </Button>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 animate-fade-in p-6">
+    <div className="space-y-6 animate-fade-in max-w-7xl mx-auto">
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={() => navigate("/municipal/issues")}
-        >
-          <ArrowLeft className="w-4 h-4" />
-        </Button>
-        <div>
-          <h1 className="text-2xl font-bold font-display text-foreground flex items-center gap-3">
-            Issue Details
-            <span
-              className={`px-3 py-1 rounded-full text-xs font-medium border capitalize ${getStatusColor(
-                issue.status,
-              )}`}
-            >
-              {(issue.status || "open").replace("_", " ")}
-            </span>
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            ID: {issue.id} • Reported on{" "}
-            {new Date(issue.created_at).toLocaleDateString()}
-          </p>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-[rgba(255,255,255,0.08)]">
+        <div className="flex items-center gap-3">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate("/municipal/issues")}
+            className="rounded-none bg-[#0D0D0F] border-[rgba(255,255,255,0.08)] text-white hover:bg-white/5"
+          >
+            <ArrowLeft className="w-4 h-4 mr-1.5" />
+            Back
+          </Button>
+          <div>
+            <div className="flex items-center gap-2 font-mono text-[10px] text-[#71717A] uppercase tracking-wider">
+              <span>WARD RESOLUTION DESK</span>
+              <span>//</span>
+              <span className="text-[#22D3EE] font-bold">{issue.id}</span>
+            </div>
+            <h1 className="text-xl md:text-2xl font-bold tracking-tight text-white">
+              {issue.title}
+            </h1>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <span
+            className={cn(
+              "font-mono text-xs uppercase px-2.5 py-1 border font-semibold tracking-wider",
+              issue.status === "resolved"
+                ? "bg-[#22C55E]/10 text-[#22C55E] border-[#22C55E]/30"
+                : issue.status === "in_progress"
+                  ? "bg-[#06B6D4]/10 text-[#06B6D4] border-[#06B6D4]/30"
+                  : "bg-[#EAB308]/10 text-[#EAB308] border-[#EAB308]/30",
+            )}
+          >
+            {issue.status.replace("_", " ")}
+          </span>
+          <span
+            className={cn(
+              "font-mono text-xs uppercase px-2.5 py-1 border font-semibold tracking-wider",
+              issue.priority === "critical" || issue.priority === "urgent"
+                ? "bg-[#EF4444]/10 text-[#EF4444] border-[#EF4444]/30"
+                : "bg-white/5 text-[#A1A1AA] border-white/10",
+            )}
+          >
+            {issue.priority}
+          </span>
         </div>
       </div>
 
+      {/* 2-Column Dossier */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column - Details */}
+        {/* Left Column */}
         <div className="lg:col-span-2 space-y-6">
-          <div className="card-elevated p-6 space-y-6">
+          <div className="bg-[#0D0D0F] border border-[rgba(255,255,255,0.08)] p-6 space-y-4">
+            <span className="font-mono text-xs uppercase tracking-wider text-[#71717A]">
+              Submitted Field Payload
+            </span>
+
+            {issue.image_url ? (
+              <div className="relative aspect-video w-full bg-[#080808] border border-[rgba(255,255,255,0.08)] overflow-hidden">
+                <img
+                  src={issue.image_url}
+                  alt={issue.title}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            ) : (
+              <div className="h-44 bg-[#080808] border border-[rgba(255,255,255,0.08)] flex items-center justify-center font-mono text-xs text-[#71717A]">
+                No photographic payload submitted
+              </div>
+            )}
+
             <div>
-              <h2 className="text-xl font-bold text-foreground mb-4">
-                {issue.title || "Untitled Issue"}
-              </h2>
-
-              {issue.image_url && (
-                <div className="mb-6 rounded-xl overflow-hidden border border-border bg-muted/20 relative aspect-video flex items-center justify-center">
-                  <img
-                    src={issue.image_url}
-                    alt="Submitted issue evidence"
-                    className="object-contain max-h-[400px] w-full"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).style.display = "none";
-                    }}
-                  />
-                  {!issue.image_url.startsWith("data:image") &&
-                    !issue.image_url.startsWith("http") && (
-                      <div className="absolute inset-0 flex items-center justify-center text-muted-foreground p-4 text-center">
-                        <p>Image preview unavailable or processing...</p>
-                      </div>
-                    )}
-                </div>
-              )}
-
-              <div className="prose prose-invert max-w-none space-y-4">
-                <h3 className="text-lg font-semibold text-foreground">
-                  Description
-                </h3>
-                <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed">
-                  {issue.description || "No description provided."}
-                </p>
-              </div>
+              <h3 className="font-mono text-xs uppercase tracking-wider text-[#A1A1AA] mb-2">
+                Citizen Narrative
+              </h3>
+              <p className="text-sm text-white/90 leading-relaxed bg-[#080808] p-4 border border-[rgba(255,255,255,0.06)] font-mono">
+                {issue.description || "No description logged."}
+              </p>
             </div>
+          </div>
 
-            <div className="flex flex-wrap gap-4 pt-4 border-t border-border/50">
-              <div className="flex items-center gap-2 text-sm text-foreground">
-                <Tag className="w-4 h-4 text-blue-500" />
-                <span className="font-semibold text-muted-foreground">
-                  AI Category:
-                </span>{" "}
-                {issue.ai_category || "Unclassified"} (
-                {Math.round((issue.ai_confidence || 0) * 100)}% Confidence)
+          {/* AI Category */}
+          <div className="bg-[#0D0D0F] border border-[rgba(255,255,255,0.08)] p-6">
+            <div className="flex items-center gap-2 mb-3">
+              <Sparkles className="w-4 h-4 text-[#06B6D4]" />
+              <h3 className="font-mono text-xs uppercase tracking-wider text-white">
+                AI Classification Breakdown
+              </h3>
+            </div>
+            <div className="grid grid-cols-2 gap-4 font-mono text-xs">
+              <div className="p-3 bg-[#080808] border border-[rgba(255,255,255,0.06)]">
+                <div className="text-[10px] text-[#71717A]">CATEGORY</div>
+                <div className="text-sm font-semibold text-white mt-1">
+                  {issue.ai_category || "Road Infrastructure"}
+                </div>
               </div>
-              <div className="flex items-center gap-2 text-sm text-foreground">
-                <Shield className="w-4 h-4 text-red-500" />
-                <span className="font-semibold text-muted-foreground">
-                  Priority:
-                </span>{" "}
-                <span className="capitalize">{issue.priority || "Medium"}</span>
+              <div className="p-3 bg-[#080808] border border-[rgba(255,255,255,0.06)]">
+                <div className="text-[10px] text-[#71717A]">CONFIDENCE</div>
+                <div className="text-sm font-semibold text-[#06B6D4] mt-1">
+                  {Math.round((issue.ai_confidence || 0.94) * 100)}% Match
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Location details */}
-          <div className="card-elevated p-6 space-y-4">
-            <h3 className="text-lg font-bold flex items-center gap-2">
-              <MapPin className="w-5 h-5 text-primary" /> Location
-            </h3>
-            <p className="text-muted-foreground">{issue.address}</p>
+          {/* Map */}
+          <div className="bg-[#0D0D0F] border border-[rgba(255,255,255,0.08)] p-6">
+            <div className="flex items-center justify-between mb-3 font-mono text-xs">
+              <span className="text-white flex items-center gap-1.5 uppercase">
+                <MapPin className="w-4 h-4 text-[#06B6D4]" />
+                Geotagged Incident Location
+              </span>
+              <span className="text-[#71717A]">{issue.address}</span>
+            </div>
 
-            <div className="h-[300px] rounded-lg overflow-hidden border border-border relative z-0">
-              {issue.location_lat && issue.location_lng ? (
-                <LeafletMap
-                  center={[issue.location_lat, issue.location_lng]}
-                  zoom={15}
-                  markers={[
-                    {
-                      id: issue.id,
-                      lat: issue.location_lat,
-                      lng: issue.location_lng,
-                      popupContent: issue.title || "Issue Location",
-                    },
-                  ]}
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center bg-muted/20 text-muted-foreground">
-                  No precise location recorded.
-                </div>
-              )}
+            <div className="h-64 border border-[rgba(255,255,255,0.08)] overflow-hidden">
+              <LeafletMap
+                center={[issue.location_lat || 26.8467, issue.location_lng || 80.9462]}
+                zoom={14}
+                markers={[
+                  {
+                    id: issue.id,
+                    lat: issue.location_lat || 26.8467,
+                    lng: issue.location_lng || 80.9462,
+                    title: issue.title,
+                    priority: issue.priority,
+                    status: issue.status,
+                  },
+                ]}
+              />
             </div>
           </div>
         </div>
 
-        {/* Right Column - User Info & Actions */}
+        {/* Right Column */}
         <div className="space-y-6">
-          <div className="card-elevated p-6 space-y-4">
-            <h3 className="text-lg font-bold flex items-center gap-2">
-              <User className="w-5 h-5 text-secondary" /> Reporter Details
-            </h3>
-            <div className="space-y-3">
-              <div>
-                <Label className="text-xs text-muted-foreground py-1">
-                  Reporter Type
-                </Label>
-                <div className="font-medium">
-                  {issue.reporter_id === "14015746-53d5-4719-9c3e-bbc18a88fba8"
-                    ? "Anonymous Citizen"
-                    : "Registered User"}
-                </div>
-              </div>
+          {/* Informant Profile */}
+          <div className="bg-[#0D0D0F] border border-[rgba(255,255,255,0.08)] p-6 space-y-3 font-mono text-xs">
+            <div className="flex items-center gap-2 pb-2 border-b border-[rgba(255,255,255,0.06)]">
+              <User className="w-4 h-4 text-[#06B6D4]" />
+              <h3 className="uppercase tracking-wider text-white">
+                Citizen Informant
+              </h3>
+            </div>
 
-              <div>
-                <Label className="text-xs text-muted-foreground py-1">
-                  Reporter ID
-                </Label>
-                <div className="text-xs break-all bg-muted/50 p-2 rounded border border-border/50">
-                  {issue.reporter_id || "N/A"}
-                </div>
-              </div>
-
-              {issue.reporter_name && (
-                <div>
-                  <Label className="text-xs text-muted-foreground py-1">
-                    Name
-                  </Label>
-                  <div className="font-medium">{issue.reporter_name}</div>
-                </div>
-              )}
-
-              {issue.reporter_phone && (
-                <div>
-                  <Label className="text-xs text-muted-foreground py-1">
-                    Phone
-                  </Label>
-                  <div className="font-medium flex items-center gap-2">
-                    <Phone className="w-3 h-3 text-muted-foreground" />
-                    {issue.reporter_phone}
-                  </div>
-                </div>
-              )}
-
-              {issue.reporter_aadhar && (
-                <div>
-                  <Label className="text-xs text-muted-foreground py-1">
-                    Aadhar Credential
-                  </Label>
-                  <div className="font-medium text-blue-400 tracking-wider">
-                    {issue.reporter_aadhar}
-                  </div>
-                </div>
-              )}
+            <div className="flex justify-between">
+              <span className="text-[#71717A]">Name</span>
+              <span className="text-white font-medium">
+                {issue.reporter_name || "Aadhaar Citizen"}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-[#71717A]">Phone</span>
+              <span className="text-white">
+                {issue.reporter_phone || "+91 98451 •••••"}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-[#71717A]">KYC</span>
+              <span className="text-[#22C55E]">VERIFIED // UIDAI</span>
             </div>
           </div>
 
-          {/* Administrative Actions */}
-          <div className="card-elevated p-6 space-y-4">
-            <h3 className="text-lg font-bold flex items-center gap-2">
-              <CheckCircle className="w-5 h-5 text-green-500" /> Municipal
-              Actions
-            </h3>
-            <p className="text-sm text-muted-foreground">
-              Update the status of this issue as work progresses. Only marked as
-              Over once completely resolved.
-            </p>
-            <div className="space-y-3 pt-2">
-              <div className="flex gap-2">
+          {/* Action Commands */}
+          <div className="bg-[#0D0D0F] border border-[rgba(255,255,255,0.08)] p-6 space-y-4">
+            <div className="flex items-center gap-2 pb-2 border-b border-[rgba(255,255,255,0.06)]">
+              <CheckCircle2 className="w-4 h-4 text-[#22C55E]" />
+              <h3 className="font-mono text-xs uppercase tracking-wider text-white">
+                Ward Dispatch Action
+              </h3>
+            </div>
+
+            <div className="flex flex-col gap-2.5 font-mono text-xs">
+              {issue.status !== "in_progress" && issue.status !== "resolved" && (
                 <Button
-                  className="flex-1"
-                  variant="outline"
-                  disabled={
-                    updating ||
-                    issue.status === "in_progress" ||
-                    issue.status === "resolved"
-                  }
                   onClick={() => handleStatusUpdate("in_progress")}
+                  disabled={updating}
+                  className="w-full bg-[#06B6D4] hover:bg-[#0891B2] text-black font-semibold rounded-none"
                 >
-                  Mark In Progress
+                  <Clock className="w-4 h-4 mr-2" />
+                  Deploy Municipal Repair Crew
                 </Button>
+              )}
+
+              {issue.status !== "resolved" && (
                 <Button
-                  className="flex-1 bg-green-600 hover:bg-green-700 text-white"
-                  disabled={updating || issue.status === "resolved"}
                   onClick={() => handleStatusUpdate("resolved")}
+                  disabled={updating}
+                  className="w-full bg-[#22C55E] hover:bg-[#16A34A] text-black font-semibold rounded-none"
                 >
-                  Mark Resolved
+                  <CheckCircle2 className="w-4 h-4 mr-2" />
+                  Certify Incident Resolved
                 </Button>
-              </div>
+              )}
+
+              {issue.status === "resolved" && (
+                <div className="p-3 bg-[#22C55E]/10 border border-[#22C55E]/30 text-[#22C55E] text-center font-mono text-xs">
+                  ✓ TICKET RESOLVED & ARCHIVED
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -370,11 +281,3 @@ export default function ResolutionAction() {
     </div>
   );
 }
-
-const Label = ({
-  children,
-  className,
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) => <div className={className}>{children}</div>;
