@@ -97,7 +97,7 @@ export function CinematicNav() {
             </button>
 
             <a
-              href="http://localhost:5173"
+              href="https://admin-dashboard-six-nu-90.vercel.app"
               target="_blank"
               rel="noreferrer"
               className="font-mono text-[11px] tracking-[0.14em] text-white border border-white/20 hover:border-[#6366F1] hover:text-[#818CF8] px-3.5 py-1.5 transition-all uppercase bg-white/[0.02]"
@@ -179,7 +179,7 @@ export function CinematicNav() {
 
         <div className="pt-8 hairline-t flex flex-col gap-4">
           <a
-            href="http://localhost:5173"
+            href="https://admin-dashboard-six-nu-90.vercel.app"
             target="_blank"
             rel="noreferrer"
             className="w-full text-center font-mono text-[12px] tracking-[0.14em] uppercase py-3 border border-white/20 text-white hover:bg-white/5"

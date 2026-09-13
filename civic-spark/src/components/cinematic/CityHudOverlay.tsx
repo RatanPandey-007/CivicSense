@@ -240,7 +240,7 @@ export const CityHudOverlay: React.FC<CityHudOverlayProps> = ({
             {/* Action Buttons */}
             <div className="flex items-center gap-3">
               <a
-                href="http://localhost:5173"
+                href="https://admin-dashboard-six-nu-90.vercel.app"
                 target="_blank"
                 rel="noreferrer"
                 className="flex-1 py-2.5 px-4 bg-[#6366F1] text-white text-xs font-mono uppercase tracking-[0.14em] font-semibold hover:bg-[#4F46E5] transition-colors flex items-center justify-center gap-2"

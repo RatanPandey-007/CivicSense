@@ -9,7 +9,7 @@ export function MobileBottomNav() {
     { label: "REPORT", href: "/report-issue", icon: PlusCircle, isPrimary: true },
     { label: "TRACK", href: "/track", icon: Search },
     { label: "CITY", href: "/#map", icon: Map },
-    { label: "ADMIN", href: "http://localhost:5173", icon: Shield, isExternal: true },
+    { label: "ADMIN", href: "https://admin-dashboard-six-nu-90.vercel.app", icon: Shield, isExternal: true },
   ];
 
   return (

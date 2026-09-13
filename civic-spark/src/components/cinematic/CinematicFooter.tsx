@@ -87,7 +87,7 @@ export function CinematicFooter() {
             <ul className="space-y-2 text-[#71717A] text-[11px]">
               <li>
                 <a
-                  href="http://localhost:5173"
+                  href="https://admin-dashboard-six-nu-90.vercel.app"
                   target="_blank"
                   rel="noreferrer"
                   className="text-[#818CF8] hover:underline"
